@@ -1,6 +1,8 @@
-# RE Toolbox
+![REToolboxTitle](https://github.com/NSACloud/RE-Toolbox/assets/46909075/53788f20-bd6d-425e-b35d-3eca69ed8e0a)
 
 This is a companion addon to make working with RE Engine files quicker and easier.
+
+![REToolboxPreview](https://github.com/NSACloud/RE-Toolbox/assets/46909075/72e6d7a9-9be5-4f8b-a63c-181464f3f32a)
 
 ### [Download RE Toolbox](https://github.com/NSACloud/RE-Toolbox/archive/refs/heads/main.zip)
 
