@@ -26,6 +26,14 @@ Navigate to the downloaded zip file for this addon and click "Install Addon". Th
 
 To update this addon, navigate to Preferences > Add-ons > RE Toolbox and press the "Check for update" button.
 
+## Change Log
+
+### V2 - 4/29/2024
+
+* Fixed issue where "Solve Repeated UVs" didn't always work 100% of the time.
+* Mesh normals are now better preserved when using "Solve Repeated UVs".
+
 See Also:
 
 https://github.com/NSACloud/RE-Mesh-Editor
+

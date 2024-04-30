@@ -199,6 +199,67 @@ class WM_OT_TriangulateMeshes(Operator):
 
 		return {'FINISHED'}
 
+
+def cloneMesh(mesh):
+    new_obj = mesh.copy()
+    new_obj.data = mesh.data.copy()
+    bpy.context.scene.collection.objects.link(new_obj)
+    return new_obj
+
+def bad_iter(blenderCrap):
+	#This might look stupid but it's actually necessary, blender will throw errors if you loop directly over the uv layers
+    i = 0
+    while (True):
+        try:
+            yield(blenderCrap[i])
+            i+=1
+        except:
+            return
+def selectRepeated(bm):
+    bm.verts.index_update()
+    bm.verts.ensure_lookup_table()
+    targetVert = set()
+    for uv_layer in bad_iter(bm.loops.layers.uv):
+        uvMap = {}
+        for face in bm.faces:
+            for loop in face.loops:
+                uvPoint = tuple(loop[uv_layer].uv)
+                if loop.vert.index in uvMap and uvMap[loop.vert.index] != uvPoint:
+                    targetVert.add(bm.verts[loop.vert.index])
+                else:
+                    uvMap[loop.vert.index] = uvPoint
+    return targetVert
+
+def solveRepeatedVertex(op,mesh):
+    bpy.ops.mesh.select_all(action='DESELECT')
+    bm = bmesh.from_edit_mesh(mesh.data)
+    oldmode = bm.select_mode
+    bm.select_mode = {'VERT'}    
+    targets = selectRepeated(bm)
+    for target in targets:
+        bmesh.utils.vert_separate(target,target.link_edges)
+        bm.verts.ensure_lookup_table()    
+    bpy.ops.mesh.select_all(action='DESELECT')
+    bm.select_mode = oldmode
+    bm.verts.ensure_lookup_table()
+    bm.verts.index_update()
+    bmesh.update_edit_mesh(mesh.data) 
+    mesh.data.update()       
+    return
+def transferNormals(clone,mesh):
+	m = mesh.modifiers.new("Normals Transfer","DATA_TRANSFER")
+	m.use_loop_data = True
+	m.loop_mapping = "TOPOLOGY"#"POLYINTERP_NEAREST"#
+	m.data_types_loops = {'CUSTOM_NORMAL'}
+	m.object = clone
+	bpy.ops.object.modifier_move_to_index(modifier=m.name, index=0)
+	bpy.ops.object.modifier_apply(modifier = m.name)
+    
+
+def deleteClone(clone):
+    objs = bpy.data.objects
+    objs.remove(objs[clone.name], do_unlink=True)	
+
 class WM_OT_SolveRepeatedUVs(Operator):
 	bl_label = "Solve Repeated UVs"
 	bl_idname = "re_toolbox.solve_repeated_uvs"
@@ -207,6 +268,12 @@ class WM_OT_SolveRepeatedUVs(Operator):
 		for selectedObj in context.selected_objects:
 			if selectedObj.type == "MESH":
 				context.view_layer.objects.active  = selectedObj
+				if bpy.app.version < (4,0,0):
+					if selectedObj.data.use_auto_smooth == False:
+						selectedObj.data.use_auto_smooth = True
+						selectedObj.data.auto_smooth_angle = .785 #45 degrees, try to preserve normals if auto smooth was disabled
+				selectedObj.data.polygons.foreach_set("use_smooth", [True] * len(selectedObj.data.polygons))
+				clone = cloneMesh(selectedObj)
 				bpy.ops.object.mode_set(mode='EDIT')
 				obj = context.edit_object
 				me = obj.data
@@ -225,7 +292,15 @@ class WM_OT_SolveRepeatedUVs(Operator):
 				for e in old_seams:
 				    e.seam = True
 				bmesh.update_edit_mesh(me)
+				solveRepeatedVertex(None, obj)
 				bpy.ops.object.mode_set(mode='OBJECT')
+				transferNormals(clone,selectedObj)
+				if bpy.app.version < (4,0,0):
+					selectedObj.data.calc_normals_split()
+				deleteClone(clone)
+				
+				
+				
 				print(f"Solved Repeated UVs on {selectedObj.name}")
 		return {'FINISHED'}
 	
@@ -425,12 +500,12 @@ class WM_OT_SetBatchExportOptions(Operator):
 	   default = True)
 	autoSolveRepeatedUVs : BoolProperty(
 	   name = "Auto Solve Repeated UVs",
-	   description = "(RE Toolbox Required)\nSplits connected UV islands if present. The mesh format does not allow for multiple uvs assigned to a vertex.\nNOTE: This will modify the object and may slightly increase time taken to export",
+	   description = "(RE Toolbox Required)\nSplits connected UV islands if present. The mesh format does not allow for multiple uvs assigned to a vertex.\nNOTE: This will modify the object and may slightly increase time taken to export. If auto smooth is disabled on the mesh, the normals may change",
 	   default = True)
 	preserveSharpEdges : BoolProperty(
-	   name = "Add Edge Split Modifier",
-	   description = "Adds an edge split modifier set to sharp edges for all objects. This prevents edges that are marked as sharp from being lost",
-	   default = True)
+	   name = "Split Sharp Edges",
+	   description = "Edge splits all edges marked as sharp to preserve them on the exported mesh.\nNOTE: This will modify the meshes in the collection",
+	   default = False)
 	useBlenderMaterialName : BoolProperty(
 	   name = "Use Blender Material Names",
 	   description = "If left unchecked, the exporter will get the material names to be used from the end of each object name. For example, if a mesh is named LOD_0_Group_0_Sub_0__Shirts_Mat, the material name is Shirts_Mat. If this option is enabled, the material name will instead be taken from the first material assigned to the object",
