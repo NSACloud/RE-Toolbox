@@ -186,7 +186,12 @@ class WM_OT_TriangulateMeshes(Operator):
 	bl_idname = "re_toolbox.triangulate_meshes"
 	bl_description = "Triangute selected meshes"
 	def execute(self, context):
-		for selectedObj in context.selected_objects:
+		if context.selected_objects != []:
+			selection = context.selected_objects	
+		else:
+			selection = bpy.context.scene.objects
+			
+		for selectedObj in selection:
 			if selectedObj.type == "MESH":
 				context.view_layer.objects.active  = selectedObj
 				bpy.ops.object.mode_set(mode='EDIT')
@@ -194,7 +199,10 @@ class WM_OT_TriangulateMeshes(Operator):
 				print(f"Triangulated faces on {selectedObj.name}")
 				bpy.ops.mesh.quads_convert_to_tris()
 				bpy.ops.object.mode_set(mode='OBJECT')
-		self.report({"INFO"},"Triangulated faces on selected objects")
+		if context.selected_objects == []: 
+			self.report({"INFO"},"Triangulated faces on all objects")
+		else:
+			self.report({"INFO"},"Triangulated faces on selected objects")
 
 
 		return {'FINISHED'}
@@ -265,7 +273,11 @@ class WM_OT_SolveRepeatedUVs(Operator):
 	bl_idname = "re_toolbox.solve_repeated_uvs"
 	bl_description = "Splits connected UV islands"
 	def execute(self, context):
-		for selectedObj in context.selected_objects:
+		if context.selected_objects != []:
+			selection = context.selected_objects	
+		else:
+			selection = bpy.context.scene.objects
+		for selectedObj in selection:
 			if selectedObj.type == "MESH":
 				context.view_layer.objects.active  = selectedObj
 				if bpy.app.version < (4,0,0):
@@ -302,15 +314,75 @@ class WM_OT_SolveRepeatedUVs(Operator):
 				
 				
 				print(f"Solved Repeated UVs on {selectedObj.name}")
+			if context.selected_objects == []: 
+				self.report({"INFO"},"Solved repeated UVs on all objects.")
+			else:
+				self.report({"INFO"},"Solved repeated UVs on selected objects.")
 		return {'FINISHED'}
-	
-	
+
+"""	
+def splitSharpEdges(obj):
+	oldActiveObj = bpy.context.view_layer.objects.active
+	obj.hide_viewport = False
+	bpy.context.view_layer.objects.active = obj
+	bpy.ops.object.mode_set(mode='EDIT')
+	obj = bpy.context.edit_object
+	me = obj.data
+	bm = bmesh.from_edit_mesh(me)
+	# old seams
+	sharp = [e for e in bm.edges if not e.smooth]
+	bmesh.ops.split_edges(bm, edges=sharp)
+	bmesh.update_edit_mesh(me)
+	bpy.ops.object.mode_set(mode='OBJECT')
+	bpy.context.view_layer.objects.active = oldActiveObj
+"""	
+class WM_OT_SplitSharpEdges(Operator):
+	bl_label = "Split Sharp Edges"
+	bl_idname = "re_toolbox.split_sharp_edges"
+	bl_description = "Edge splits edges marked as sharp in blender (blue edges). This preserves sharp edges that would otherwise be lost on export"
+	def execute(self, context):
+		if context.selected_objects != []:
+			selection = context.selected_objects	
+		else:
+			selection = bpy.context.scene.objects
+		for selectedObj in selection:
+			if selectedObj.type == "MESH":
+				isHidden = selectedObj.hide_viewport
+				if isHidden:
+					selectedObj.hide_viewport = False
+				context.view_layer.objects.active  = selectedObj
+				
+				
+				bpy.ops.object.mode_set(mode='EDIT')
+				obj = bpy.context.edit_object
+				me = obj.data
+				bm = bmesh.from_edit_mesh(me)
+				# old seams
+				sharp = [e for e in bm.edges if not e.smooth]
+				if sharp != []:
+					print(f"Split Sharp Edges on {selectedObj.name}")
+				bmesh.ops.split_edges(bm, edges=sharp)
+				bmesh.update_edit_mesh(me)
+				bpy.ops.object.mode_set(mode='OBJECT')
+				selectedObj.hide_viewport = isHidden
+				
+				
+		
+		if context.selected_objects == []: 
+			self.report({"INFO"},"Split sharp edges on all objects.")
+		else:
+			self.report({"INFO"},"Split sharp edges on selected objects.")
+		return {'FINISHED'}
 class WM_OT_DeleteLoose(Operator):
 	bl_label = "Delete Loose Geometry"
 	bl_idname = "re_toolbox.delete_loose"
 	bl_description = "Deletes loose vertices and edges with no faces on selected meshes"
 	def execute(self, context):
-		for selectedObj in context.selected_objects:
+		if context.selected_objects != []:
+			selection = context.selected_objects	
+		else:
+			selection = bpy.context.scene.objects
+		for selectedObj in selection:
 			if selectedObj.type == "MESH":
 				context.view_layer.objects.active  = selectedObj
 				bpy.ops.object.mode_set(mode='EDIT')
@@ -318,23 +390,44 @@ class WM_OT_DeleteLoose(Operator):
 				print(f"Deleted loose geometry on {selectedObj.name}")
 				bpy.ops.mesh.delete_loose()
 				bpy.ops.object.mode_set(mode='OBJECT')
-		self.report({"INFO"},"Deleted loose geometry on selected objects")
+		if context.selected_objects == []: 
+			self.report({"INFO"},"Deleted loose geometry on all objects")
+		else:
+			self.report({"INFO"},"Deleted loose geometry on selected objects")
 		return {'FINISHED'}
 class WM_OT_RenameMeshToREFormat(Operator):
 	bl_label = "Rename Meshes"
 	bl_idname = "re_toolbox.rename_meshes"
 	bl_description = "Renames selected meshes to RE mesh naming scheme (Example: Group_0_Sub_0__Shirts_Mat)"
 	def execute(self, context):
-		currentSubIndex = 0
-		for selectedObj in context.selected_objects:
+		groupIndexDict = dict()
+		if context.selected_objects != []:
+			selection = context.selected_objects	
+		else:
+			selection = bpy.context.scene.objects
+		for selectedObj in selection:
 			if selectedObj.type == "MESH":
+				if "Group_" in selectedObj.name:
+					try:
+						groupID = int(selectedObj.name.split("Group_")[1].split("_")[0])
+					except:
+						pass
+				else:
+					print("Could not parse group ID in {selectedObj.name}, setting to 0")
+					groupID = 0
+				if groupID not in groupIndexDict:
+					groupIndexDict[groupID] = 0
 				if len(selectedObj.data.materials) > 0:
 					materialName = selectedObj.data.materials[0].name.split(".",1)[0].strip()
 				else:
 					materialName = "NO_MATERIAL"
-				selectedObj.name = f"Group_0_Sub_{str(currentSubIndex)}__{materialName}"
-				currentSubIndex += 1
-		self.report({"INFO"},"Renamed selected objects to RE Mesh format")
+				selectedObj.name = f"Group_{str(groupID)}_Sub_{str(groupIndexDict[groupID])}__{materialName}"
+				groupIndexDict[groupID] += 1
+				
+		if context.selected_objects == []: 
+			self.report({"INFO"},"Renamed all objects to RE Mesh format")
+		else:
+			self.report({"INFO"},"Renamed selected objects to RE Mesh format")
 		return {'FINISHED'}
 #Weights
 class WM_OT_RenameMHWToMHR(Operator):
@@ -437,13 +530,21 @@ class WM_OT_RemoveZeroWeightVertexGroups(Operator):
 	bl_idname = "re_toolbox.remove_zero_weight_vertex_groups"
 
 	def execute(self, context):
-		for obj in bpy.context.selected_objects:
+		if context.selected_objects != []:
+			selection = context.selected_objects	
+		else:
+			selection = bpy.context.scene.objects
+		for obj in selection:
 			emptyGroupList = []
 			for vertexGroup in obj.vertex_groups:
 				if not any(vertexGroup.index in [g.group for g in v.groups] for v in obj.data.vertices):
 					emptyGroupList.append(vertexGroup)
 			for group in emptyGroupList:
 				obj.vertex_groups.remove(group)
+		if context.selected_objects == []: 
+			self.report({"INFO"},"Removed empty vertex groups on all objects.")
+		else:
+			self.report({"INFO"},"Removed empty vertex groups on selected objects.")		
 		return {'FINISHED'}
 	
 class WM_OT_TransferWeightsFromActive(Operator):
@@ -462,16 +563,67 @@ class WM_OT_LimitTotalNormalizeAll(Operator):
 	bl_idname = "re_toolbox.limit_total_normalize"
 
 	def execute(self, context):
-		for selectedObj in context.selected_objects:
+		if context.selected_objects != []:
+			selection = context.selected_objects	
+		else:
+			selection = bpy.context.scene.objects
+		for selectedObj in selection:
 			if selectedObj.type == "MESH":
 				context.view_layer.objects.active  = selectedObj
 				bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
-				bpy.ops.object.vertex_group_limit_total(limit = 8)
-				bpy.ops.object.vertex_group_normalize_all(lock_active = False)
-				print(f"Limited total weights to 8 and normalized {selectedObj.name}")
+				try:
+					bpy.ops.object.vertex_group_limit_total(limit = 6)
+					bpy.ops.object.vertex_group_normalize_all(lock_active = False)
+				except:
+					pass
+				print(f"Limited total weights to 6 and normalized {selectedObj.name}")
 				bpy.ops.object.mode_set(mode='OBJECT')
-				self.report({"INFO"},"Limited total weights and normalized on selected objects")
+		if context.selected_objects == []:
+			self.report({"INFO"},"Limited total weights to 6 and normalized on all objects")
+		else:
+			self.report({"INFO"},"Limited total weights to 6 normalized on selected objects")
 		return {'FINISHED'}
+class WM_OT_CreateMeshCollection(Operator):
+	bl_label = "Create Mesh Collection"
+	bl_idname = "re_toolbox.create_mesh_collection"
+	bl_description = "Creates a collection for RE Engine meshes"
+	bl_options = {'UNDO'}
+	collectionName : bpy.props.StringProperty(name = "Mesh Name",
+										 description = "The name of the newly created mesh collection",
+										 default = "newMesh"
+										)
+	lodCount : bpy.props.IntProperty(name = "LOD Amount",
+									  description = "The amount of lower quality model levels to switch between.\nLeave this at 1 unless you have a set of lower quality models",
+									  default = 1,
+									  min = 1,
+									  max = 8)
+	def execute(self, context):
+		if self.collectionName.strip() != "":
+			collection = bpy.data.collections.new(self.collectionName+".mesh")
+			bpy.context.scene["REMeshLastImportedCollection"] = collection.name
+			bpy.context.scene.collection.children.link(collection)
+			collection.color_tag = "COLOR_01"
+			if hasattr(bpy.types, "OBJECT_PT_mdf_tools_panel"):
+				try:
+					bpy.context.scene.re_mdf_toolpanel.meshCollection = collection.name
+				except Exception as err:
+					print("Failed to assign mesh collection in MDF panel.")
+			else:
+				print("RE Mesh Editor is not installed. Skipping assigning mesh collection in MDF panel.")
+			
+			for i in range(self.lodCount):
+				lodCollection = bpy.data.collections.new(f"Main Mesh LOD{str(i)} - {collection.name}")
+				lodCollection["LOD Distance"] = 0.167932*(i+1)
+				collection.children.link(lodCollection)
+			self.report({"INFO"},"Created new RE mesh collection.")
+			return {'FINISHED'}
+		else:
+			self.report({"ERROR"},"Invalid mesh collection name.")
+			return {'CANCELLED'}
+	
+	def invoke(self,context,event):
+		return context.window_manager.invoke_props_dialog(self)
+
 #Quick Export
 class WM_OT_SetBatchExportOptions(Operator):
 	bl_label = "Export Options"
@@ -593,14 +745,7 @@ class WM_OT_SetBatchExportOptions(Operator):
 		else:
 			showErrorMessageBox("No items in batch export list.")
 			return {"FINISHED"}
-class WM_OT_QuickExport(Operator):
-	bl_label = "Batch Export"
-	bl_idname = "re_toolbox.quick_export"
 
-	def execute(self, context):
-		showMessageBox(message = "Not implemented yet.", title = "Not Implemented")#TODO
-
-		return {'FINISHED'}
 class WM_OT_QuickExport(Operator):
 	bl_label = "Batch Export"
 	bl_idname = "re_toolbox.quick_export"

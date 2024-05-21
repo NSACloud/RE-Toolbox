@@ -2,7 +2,8 @@
 
 This is a companion addon to make working with RE Engine files quicker and easier.
 
-![REToolboxPreview](https://github.com/NSACloud/RE-Toolbox/assets/46909075/72e6d7a9-9be5-4f8b-a63c-181464f3f32a)
+![REToolboxPreview](https://github.com/NSACloud/RE-Toolbox/assets/46909075/8e4dd54f-d330-47d9-8281-e48713504b2e)
+
 
 ### [Download RE Toolbox](https://github.com/NSACloud/RE-Toolbox/archive/refs/heads/main.zip)
 
@@ -15,7 +16,7 @@ This is a companion addon to make working with RE Engine files quicker and easie
 
 
 ## Requirements
-* [Blender 2.8 or higher](https://www.blender.org/download/)
+* [Blender 2.93 or higher](https://www.blender.org/download/)
 
 ## Installation
 Download the addon from the "Download RE Toolbox" link at the top or click Code > Download Zip.
@@ -28,11 +29,21 @@ To update this addon, navigate to Preferences > Add-ons > RE Toolbox and press t
 
 ## Change Log
 
+### V3 - 5/20/2024
+
+* Added "Create Mesh Collection" button. It creates a collection for an RE Engine mesh and sets up LOD collections.
+* Added "Split Sharp Edges" button. This edge splits edges that are marked as sharp in Blender so that the sharp edge is not lost when the mesh is exported.
+* All operators now apply to every object in scene unless objects are selected. In which case, the operator will only apply to the selected objects.
+  
+<details>
+  <summary>Older Version Change Logs</summary>
+
 ### V2 - 4/29/2024
 
 * Fixed issue where "Solve Repeated UVs" didn't always work 100% of the time.
 * Mesh normals are now better preserved when using "Solve Repeated UVs".
 
+ </details>
 See Also:
 
 https://github.com/NSACloud/RE-Mesh-Editor

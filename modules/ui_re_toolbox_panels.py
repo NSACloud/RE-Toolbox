@@ -29,7 +29,9 @@ class OBJECT_PT_REToolsMeshToolsPanel(Panel):
 
 	def draw(self, context):
 		layout = self.layout
+		layout.operator("re_toolbox.create_mesh_collection")
 		layout.operator("re_toolbox.solve_repeated_uvs")
+		layout.operator("re_toolbox.split_sharp_edges")
 		layout.operator("re_toolbox.rename_meshes")
 		layout.operator("re_toolbox.triangulate_meshes")
 		layout.operator("re_toolbox.delete_loose")

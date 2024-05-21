@@ -2,7 +2,7 @@
 bl_info = {
     "name": "RE Toolbox",
     "author": "NSA Cloud",
-    "version": (2, 0),
+    "version": (3, 0),
     "blender": (2, 93, 0),
     "location": "View3D > Tool Shelf > RE Toolbox",
     "description": "Extra utilities to make working with RE Engine files easier",
@@ -26,6 +26,7 @@ from .modules.re_toolbox_operators import (WM_OT_AddItemOperator,
                                         WM_OT_SeparateChainBones,
                                         WM_OT_TriangulateMeshes,
                                         WM_OT_SolveRepeatedUVs,
+										WM_OT_SplitSharpEdges,
 										#WM_OT_SolveRepeatedUVsNew,
                                         WM_OT_DeleteLoose,
 										WM_OT_RenameMeshToREFormat,
@@ -36,6 +37,7 @@ from .modules.re_toolbox_operators import (WM_OT_AddItemOperator,
                                         WM_OT_LimitTotalNormalizeAll,
                                         WM_OT_QuickExport,
 										WM_OT_SetBatchExportOptions,
+										WM_OT_CreateMeshCollection,
                                         
                                         )
 class REToolboxPreferences(AddonPreferences):
@@ -107,6 +109,7 @@ classes = [
     WM_OT_TriangulateMeshes,
     WM_OT_SolveRepeatedUVs,
 	#WM_OT_SolveRepeatedUVsNew,
+	WM_OT_SplitSharpEdges,
     WM_OT_DeleteLoose,
 	WM_OT_RenameMeshToREFormat,
     #WM_OT_RenameMHWToMHR,
@@ -114,7 +117,8 @@ classes = [
     WM_OT_RemoveZeroWeightVertexGroups,
     #WM_OT_TransferWeightsFromActive,
     WM_OT_LimitTotalNormalizeAll,
-    WM_OT_QuickExport
+    WM_OT_QuickExport,
+	WM_OT_CreateMeshCollection,
     ]
 
 
